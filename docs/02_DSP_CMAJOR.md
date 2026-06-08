@@ -145,6 +145,41 @@ count -= (count > maxLen) ? maxLen + 1 : 0;   // correct wrap
 | `std::levels::toDecibels(x)` / `dBtoGain(x)` | level conversions |
 | `wrap<N>` | power-of-two modular integer |
 
+## More verified stdlib (from the official Amorph prompts)
+
+**[verified-official]** — see [`../ai/amorph_official/`](../ai/amorph_official/) for the
+full cheatsheets.
+
+- **RNG:** `std::random` is a *namespace*, not a function — `std::random(lo,hi)` does
+  **not** exist. Declare a field `std::random::RNG rng;` then call `rng.getUnipolar()`
+  (0..1), `rng.getBipolar()` (−1..1), `rng.getFloat(max)`, `rng.seed(int64)`
+  (seed with `processor.id` or `processor.session`).
+- **Notes:** `std::notes::noteToFrequency(n)` and `frequencyToNote(hz)` return
+  **float32** (not float64).
+- **MIDI:** `std::midi::Message` with `isNoteOn()/isNoteOff()/getNoteNumber()`(int)`/
+  getVelocity()`(int)`/getFloatVelocity()`(0..1)`/isController()/isControllerNumber(n)/
+  getControllerValue()/getChannel0to15()/isPitchWheel()`; build messages to emit with
+  `std::midi::createMessage(status, d1, d2)`. **Match note-off by stored `int`
+  note number, never by float frequency.**
+- **Oscillators:** `std::oscillators::waveshape(float32)::sine/square/triangle/
+  sawtoothUp(phase)` and antialiased `polyblep_sawtooth/polyblep_square(phase, inc)`.
+- **Noise processors:** `std::noise::White / Brown / Pink`.
+- **FFT:** `std::frequency::realOnlyForwardFFT()` works (output `[0..N/2]` real bins,
+  `[N/2+1..N-1]` imaginary).
+- **Processor props:** `processor.id` (stable int32 per instance), `processor.session`
+  (changes each run).
+
+### Two clarifications that override older notes
+
+- **Custom parameter names work.** `param1..paramN` is the recommended convention, but
+  `paramDrive`, `paramMix`, etc. bind fine. (The old "custom names break binding"
+  claim is false.) The `param1..paramN` convention is still recommended so the UI/DSP
+  contract stays obvious.
+- **Arrays are fixed-size only.** No unsized `float[] buf`, no runtime `.wrap(size)`,
+  no `.size` property — sizes must be compile-time constants. Index with `.at(i)`.
+- **Avoid prefix `++`/`--`** (`x += 1`). The prompts' own `for` headers use `++i`,
+  which compiles; the stated rule is the safe default.
+
 ## Top-level structs
 
 Only `namespace`, `processor`, `graph` may appear at file scope. Wrap a bare

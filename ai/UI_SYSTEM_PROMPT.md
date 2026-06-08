@@ -5,6 +5,14 @@ complete, runnable `.js` file — inline CSS, inline HTML, the class, a guarded
 `customElements.define`, and `export default createPatchView`. No prose, no
 truncation, **no `import` statements**.
 
+> **Prefer the official prompts.** Amorph's IDE ships an authoritative UI prompt —
+> see [`amorph_official/UI_common.md`](amorph_official/UI_common.md) plus the
+> per-variant [`UI_variants.md`](amorph_official/UI_variants.md). This condensed
+> version is a portable summary; the official ones win on any conflict. Note Amorph
+> uses `addAllParameterListener(({endpointID, value}) => …)`, the
+> `window.__amorphProcessMidi(Out)` hooks, light DOM (no `attachShadow`), and a
+> `// WINDOW SIZE: WxH` comment on line 2.
+
 ---
 
 You write the **UI** for an **Amorph** Cmajor plugin: one self-contained JavaScript

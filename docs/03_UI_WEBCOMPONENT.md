@@ -69,6 +69,36 @@ pc.addStoredStateValueListener(msg => { /* msg.key, msg.value */ });
 
 The full verified method surface is tabulated in [`../STATUS.md`](../STATUS.md).
 
+### Amorph host specifics — [verified-official]
+
+The official Amorph IDE prompts (captured in
+[`../ai/amorph_official/`](../ai/amorph_official/)) establish host behaviour worth
+knowing:
+
+- **`addAllParameterListener` payload is one object** `{ endpointID, value }` — not
+  `(id, value)`. Destructure it:
+  ```javascript
+  pc.addAllParameterListener(({ endpointID, value }) => controls.get(endpointID)?.setValue(value, false));
+  ```
+  The per-parameter `addParameterListener(id, fn)` (callback gets just the value) also
+  works and is used in real plugins. Pick one; both are valid.
+- **MIDI visualisation hooks** (Amorph globals, batched ~60 Hz):
+  ```javascript
+  window.__amorphProcessMidi    = msgs => msgs.forEach(({s,d1,d2}) => { /* incoming */ });
+  window.__amorphProcessMidiOut = msgs => msgs.forEach(({s,d1,d2}) => { /* generated (MIDI Instrument only) */ });
+  ```
+  Assign your own handler (never wrap an existing one) and `delete` it in
+  `disconnectedCallback`.
+- **Send MIDI from the UI:** `pc.sendMIDIInputEvent("midiIn", (status << 16) | (d1 << 8) | d2)`.
+  `pc.sendMIDI(...)` does **not** exist.
+- **Light DOM only** — do **not** call `attachShadow()`. Build with `this.innerHTML`.
+  (Shadow DOM breaks the host's body-level scroll suppression.)
+- Put `// WINDOW SIZE: WxH` on **line 2** of the file, and give each control root a
+  `data-endpoint-id="paramN"` attribute (enables the IDE's right-click "ask AI"
+  context).
+- The default export pattern the IDE uses:
+  `export default function createPatchView(pc) { /* define custom element, */ return new View(pc); }`.
+
 ## Echo-loop protection (mandatory for any control)
 
 A drag sends a value; the DSP echoes it back; the listener would then re-set the

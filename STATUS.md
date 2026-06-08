@@ -36,7 +36,8 @@ treat them as pointers, not guarantees.
     `node core = AbyssifyReverbCore * 4;` and analysis (DFT) runs on a *separate*
     node at host rate — confirming both that `* N` works and that you keep
     rate-sensitive analysis off the oversampled node.
-- See [`docs/06_OVERSAMPLING.md`](docs/06_OVERSAMPLING.md).
+- See [`docs/06_OVERSAMPLING.md`](docs/06_OVERSAMPLING.md). Re-confirmed by the
+  official Amorph IDE prompts ("Per-node oversampling: `node x = MyProc * 4;`").
 
 ### 2. UI → DSP bridge mechanism
 
@@ -65,6 +66,70 @@ treat them as pointers, not guarantees.
   - Not part of the official Cmajor spec; this is a host-behaviour lesson. See
     [`docs/07_SCALING.md`](docs/07_SCALING.md) for the full method including the
     host-wrapper scrollbar fix and the transparent-background fix.
+
+### 4. Plugin-type I/O — default templates vs. tested capability
+
+- **Official Amorph IDE prompts say:** FX has "no MIDI"; MIDI Instrument is "pure
+  MIDI, NO `output stream`"; none mention a sidechain.
+- **Resolution — [tested by maintainer]:** the prompts describe minimal *default
+  templates*, not host limits. Tested reality:
+  - **Audio FX has MIDI in** (input only — no MIDI out).
+  - **MIDI Instrument can also output audio** (not pure-MIDI-only).
+  - **All three types have a sidechain input** (`scIn`).
+  The prompt text simply lags behind the host. Authoritative matrix:
+  [`docs/10_PLUGIN_TYPES.md`](docs/10_PLUGIN_TYPES.md).
+
+### 5. UI parameter-listener payload
+
+- **Resolution — [verified-official]:** Amorph's `addAllParameterListener` fires with
+  **one object** `{ endpointID, value }` (not two args). The per-parameter
+  `addParameterListener(endpointID, fn)` also works and is used in a real shipped
+  plugin — both are valid; pick one. Documented in
+  [`docs/03_UI_WEBCOMPONENT.md`](docs/03_UI_WEBCOMPONENT.md).
+
+### 6. Two legitimate UI scaling philosophies
+
+- The official prompt's default UI layout is **fluid** (`:host` 100%/100%, %/fr/
+  flex/grid, no fixed px). A real pixel-perfect plugin instead uses a **fixed chassis
+  scaled with CSS `zoom`** (confirmed: the reverb UI sets `chassis.style.zoom`). Both
+  are legitimate; choose fluid for responsive layouts, zoom-on-fixed-chassis for
+  skeuomorphic pixel-exact designs. See [`docs/07_SCALING.md`](docs/07_SCALING.md).
+
+---
+
+## Official Amorph IDE prompts — captured & verified
+
+Amorph's IDE emits a per-variant system prompt for AI codegen. Captured verbatim in
+[`ai/amorph_official/`](ai/amorph_official/). They are the most authoritative source
+for Cmajor-in-Amorph correctness. Facts established there (**[verified-official]**):
+
+- **Cmajor stdlib:** `std::random::RNG` is a *struct field*, not a function
+  (`std::random(lo,hi)` does **not** exist); `std::notes::noteToFrequency` returns
+  **float32**; `std::oscillators::waveshape(float32)::sine/square/triangle/
+  sawtoothUp/polyblep_*`; `std::noise::White/Brown/Pink`;
+  `std::frequency::realOnlyForwardFFT()` works (real bins `[0..N/2]`, imaginary
+  `[N/2+1..N-1]`); `std::midi::createMessage(status,d1,d2)`.
+- **MIDI message methods:** `isNoteOn/isNoteOff/getNoteNumber/getVelocity/
+  getFloatVelocity/isController/isControllerNumber/getControllerValue/
+  getChannel0to15/isPitchWheel`.
+- **Processor properties:** `processor.id` (stable int32 per instance),
+  `processor.session` (changes per run).
+- **Array rule:** fixed compile-time sizes only — no unsized `float[]`, no
+  `.wrap(size)`, no `.size`. Index with `.at(i)`.
+- **No prefix `++`/`--`** (use `x += 1`). *Caveat:* the prompts' own `for` headers use
+  `++i`, which evidently compiles; the stated rule is the safe default.
+- **Custom parameter names work** (`paramSnap`, etc.) — `param1..paramN` is the
+  recommended convention, not a binding requirement. ("Custom names break binding" is
+  **false**.)
+- **Spectrum pattern:** namespace-wrapped `struct { float[512] bins; }`, emit at
+  ~30 Hz (`0.033 s`) via `output event`. In the Amorph host, `addEndpointListener`
+  receives these directly — the prompts' "PluginProcessor.cpp must handle it" note
+  applies only to a standalone JUCE export.
+- **UI host bridges:** `window.__amorphProcessMidi` (in) /
+  `window.__amorphProcessMidiOut` (out, MIDI Instrument only), batched ~60 Hz;
+  `sendMIDIInputEvent("midiIn", (status<<16)|(d1<<8)|d2)` (note `sendMIDI` does not
+  exist); light DOM only (no `attachShadow`); `// WINDOW SIZE: WxH` on line 2;
+  `data-endpoint-id="paramN"` enables the IDE's right-click AI context.
 
 ---
 
@@ -111,7 +176,8 @@ From `docs/Cmaj Language Guide.md` unless noted. **[verified]**
 
 | Source document | Status | Notes |
 |---|---|---|
-| Official `cmajor-lang/cmajor` repo (docs + `cmaj_api`) | **authoritative** | Ground truth for language + bridge. |
+| Official Amorph IDE prompts (per variant) | **authoritative (host)** | Ground truth for Cmajor-in-Amorph. Captured verbatim in `ai/amorph_official/`. A few host-capability lines are outdated (see contradiction #4). |
+| Official `cmajor-lang/cmajor` repo (docs + `cmaj_api`) | **authoritative (language)** | Ground truth for language + bridge. |
 | `cmajor-amorph-framework` notes | current, mostly correct | Right bridge contract; right oversampling. Folded in. |
 | `CMAJOR_OVERSAMPLING_GUIDE` | correct | Matches the official guide. Version/date stamps removed as project-specific. |
 | `Cmajor_Plugin_Dev_Toolkit` | mixed | Good DSP/GUI reference + Airwindows pointer; some German; de-duplicated. |
@@ -133,5 +199,9 @@ reusable patterns* and is **not** included in this public kit.
   implementation detail (see above).
 - Amorph's `getScaleFactorLimits()` support — observed unreliable; manual `zoom`
   scaling is the working path. Re-check per Amorph version.
+- Exact sidechain endpoint name/requirement per type (is `scIn` fixed, or free as
+  long as it is a second stereo input stream?). **[unverified]**
+- Whether MIDI on an FX is in-only at the host level or just by convention (tested:
+  in works; out not tested on FX).
 
 Found something wrong or newly true? Update this file in the same PR as the fix.

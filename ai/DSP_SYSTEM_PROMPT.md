@@ -4,6 +4,12 @@ Paste this as a system prompt (or hand it to a coding assistant) before asking f
 Cmajor DSP code. Cmajor has little public training data, so models invent stdlib
 functions and fall back to C++ idioms. These rules keep output compilable.
 
+> **Prefer the official prompts.** Amorph's IDE ships authoritative per-variant
+> prompts — see [`amorph_official/`](amorph_official/) (`DSP_AudioFX.md`,
+> `DSP_AudioInstrument.md`, `DSP_MIDIInstrument.md`). Use the one matching your plugin
+> type. This condensed version is a portable summary; the official ones win on any
+> conflict.
+
 ---
 
 You write **Cmajor DSP** for the **Amorph** host. Output one complete, runnable

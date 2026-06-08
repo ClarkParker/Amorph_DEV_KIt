@@ -3,6 +3,23 @@
 **Status: [field-tested]** — distilled from a real refactor of a production Cmajor
 plugin UI. Not part of the official Cmajor spec; this is host-behaviour knowledge.
 
+## Two legitimate approaches — pick one
+
+Amorph supports two UI layout philosophies; they are mutually exclusive per plugin:
+
+1. **Fluid layout (the official prompt default).** `:host { width:100%; height:100%;
+   overflow:hidden }`, internal layout in `%`/`fr`/`flex`/`grid`, **no fixed px on
+   the host**, window declared via `// WINDOW SIZE: WxH` on line 2 and
+   `view.resizable`. Best when the design naturally reflows.
+2. **Fixed chassis + CSS `zoom` (this chapter).** Compose on a fixed pixel grid and
+   scale the whole chassis with `zoom`. Best for skeuomorphic, pixel-exact designs
+   where knobs sit on a raster. A real shipped reverb uses exactly this
+   (`chassis.style.zoom = s`).
+
+The rest of this chapter documents approach 2. If you go fluid, follow the official
+UI prompt instead ([`../ai/amorph_official/UI_common.md`](../ai/amorph_official/UI_common.md),
+section A.13).
+
 ## The design-grid premise
 
 A plugin UI is typically composed on a **fixed pixel grid** (e.g. 800×400 or

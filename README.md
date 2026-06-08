@@ -46,8 +46,9 @@ docs/
   09_PITFALLS_CHECKLIST.md Quick pitfalls lookup + pre-flight and test checklists.
   10_PLUGIN_TYPES.md       The three Amorph plugin types and their I/O endpoint structure.
 ai/
-  DSP_SYSTEM_PROMPT.md     System prompt to hand an AI assistant before DSP coding.
-  UI_SYSTEM_PROMPT.md      System prompt to hand an AI assistant before UI coding.
+  amorph_official/         The verbatim system prompts Amorph's own IDE emits (authoritative).
+  DSP_SYSTEM_PROMPT.md     Condensed DSP system prompt (defers to amorph_official).
+  UI_SYSTEM_PROMPT.md      Condensed UI system prompt (defers to amorph_official).
 reference/
   airwindows/README.md     How to use the Airwindows plugins as a DSP reference (clone, don't vendor).
 templates/                 (roadmap) Copy-to-start plugin template: DSP + UI + manifest.
