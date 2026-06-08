@@ -1,0 +1,17 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Build / artefacts
+build/
+dist/
+*.log
+
+# Cloned reference repos (do NOT vendor — clone locally as needed)
+/cmajor/
+/airwindows/
+/cmajor-src/
