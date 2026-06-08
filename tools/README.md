@@ -14,7 +14,10 @@ single file, usable from the CLI **and** importable as a module. They're built t
 | [`ui_lint.py`](ui_lint.py) | Static checks for the Amorph UI footguns (`import`/`attachShadow`, canvas resize in rAF, `window` pointer listeners, `vw/vh`, `backdrop-filter`, missing `// WINDOW SIZE` / cleanup / `requestParameterValue`, …). |
 | [`check_sync.py`](check_sync.py) | Cross-check the DSP↔UI parameter contract: IDs present on both sides, ranges agree. |
 | [`new_plugin.py`](new_plugin.py) | Scaffold a new plugin (DSP + UI + manifest) from a small JSON param spec. Generated code passes the linters out of the box. |
+| [`params_from_dsp.py`](params_from_dsp.py) | The reverse of the scaffolder: emit a param-spec JSON **from** an existing DSP (to regenerate/migrate a UI or document a plugin). |
+| [`manifest_check.py`](manifest_check.py) | Validate a `.cmajorpatch`: JSON, required keys, ID format, files exist, `view` size vs UI `// WINDOW SIZE`, `isInstrument`/`category` vs the DSP-inferred type. |
 | [`preflight.py`](preflight.py) | Run the endpoint summary + both linters + sync check on a patch folder, with one verdict. |
+| [`hooks/pre-commit`](hooks/pre-commit) | Git hook: run `preflight.py --strict` + `manifest_check.py` on every plugin touched by a commit. Install with [`hooks/install.sh`](hooks/install.sh). |
 
 ## Quick start
 
@@ -37,6 +40,18 @@ python3 tools/check_sync.py MyDSP.cmajor MyUI.js
 ```bash
 python3 tools/new_plugin.py --type instrument --name "My Synth" --out ./MySynth
 python3 tools/new_plugin.py --type midi       --name "My Arp"   --out ./MyArp
+```
+
+Reverse direction (regenerate a UI from an existing DSP):
+```bash
+python3 tools/params_from_dsp.py MyDSP.cmajor --out spec.json
+python3 tools/new_plugin.py spec.json --out ./Regen --force
+```
+
+Validate a manifest, and install the pre-commit gate:
+```bash
+python3 tools/manifest_check.py path/to/Plugin.cmajorpatch
+bash tools/hooks/install.sh        # runs the checks automatically on each commit
 ```
 
 Exit codes: `0` = clean/consistent, `1` = findings. With `--strict`, warnings also
@@ -80,10 +95,7 @@ compile and listen. False positives are possible; tune the rules to your codebas
 
 ## Roadmap
 
-- `manifest_check.py` — validate a `.cmajorpatch` (ID format, view size vs UI
-  `// WINDOW SIZE`, `isInstrument`/`category` vs inferred type).
-- `params_from_dsp.py` — emit a param spec JSON **from** an existing DSP (reverse of
-  the scaffolder), to re-generate or migrate a UI.
-- A pre-commit hook wrapper that runs `preflight.py --strict` on changed patches.
-- Optional: a `midi_preview.py` that packs/unpacks the `(status<<16)|(d1<<8)|d2`
-  short codes for quick UI testing.
+- [x] `manifest_check.py`, `params_from_dsp.py`, and a pre-commit hook (done).
+- [ ] A CI workflow that runs `preflight.py --strict` on `examples/` on every push.
+- [ ] Optional `midi_preview.py` that packs/unpacks `(status<<16)|(d1<<8)|d2` short
+  codes for quick UI testing.

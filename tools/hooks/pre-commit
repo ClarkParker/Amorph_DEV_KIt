@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run the dev-kit checks on any plugin touched by this commit.
+#
+# For every staged .cmajor / .js / .cmajorpatch, it runs preflight.py --strict on
+# the containing folder and manifest_check.py --strict on any manifest. A failure
+# blocks the commit. Bypass once with:  git commit --no-verify
+#
+# Install:  bash tools/hooks/install.sh     (symlinks this into .git/hooks/)
+
+set -u
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root" || exit 1
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "pre-commit: python3 not found — skipping dev-kit checks." >&2
+    exit 0
+fi
+
+# staged, still-present files of interest
+mapfile -t changed < <(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '\.(cmajor|js|cmajorpatch)$' || true)
+
+[ "${#changed[@]}" -eq 0 ] && exit 0
+
+# unique parent folders that contain a plugin
+declare -A dirs=()
+for f in "${changed[@]}"; do
+    [ -f "$f" ] && dirs["$(dirname "$f")"]=1
+done
+
+rc=0
+for d in "${!dirs[@]}"; do
+    # only check folders that actually look like a patch (have a .cmajor or .cmajorpatch)
+    if ls "$d"/*.cmajor "$d"/*.cmajorpatch >/dev/null 2>&1; then
+        echo "── pre-commit: checking $d ──"
+        python3 tools/preflight.py "$d" --strict || rc=1
+        for m in "$d"/*.cmajorpatch; do
+            [ -f "$m" ] && { python3 tools/manifest_check.py "$m" --strict || rc=1; }
+        done
+    fi
+done
+
+if [ "$rc" -ne 0 ]; then
+    echo
+    echo "pre-commit: dev-kit checks failed. Fix the issues above, or commit with --no-verify to bypass." >&2
+fi
+exit "$rc"

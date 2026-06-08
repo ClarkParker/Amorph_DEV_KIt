@@ -134,9 +134,9 @@ If you find a claim that no longer holds, open an issue or PR and update `STATUS
 - [x] Python tools: scaffolder, DSP/UI linters, endpoint parser, sync check, preflight.
 - [x] `examples/` — one worked plugin per type (oversampled saturator, poly synth, MIDI harmonizer), each passing preflight.
 - [x] A meter output-event pattern with a Canvas visualiser (in the saturator example).
+- [x] More tools: `manifest_check.py`, `params_from_dsp.py`, a pre-commit hook.
 - [ ] `templates/Plugin/` — minimal copy-to-start (or just use `new_plugin.py`).
-- [ ] CI sanity check (run `preflight.py --strict`) on the example plugins.
-- [ ] More tools: `manifest_check.py`, `params_from_dsp.py`, a pre-commit hook.
+- [ ] CI workflow running `preflight.py --strict` on the example plugins.
 
 ## License
 
