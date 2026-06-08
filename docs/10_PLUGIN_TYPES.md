@@ -83,6 +83,43 @@ The minimal MIDI template is `midiIn` + `midiOut` only (no audio). For a pure MI
 processor, `main()` is just `loop { advance(); }` — all work happens in
 `event midiIn`.
 
+## Sidechain & multiple audio inputs — how it works
+
+**Status: [verified]** against the Cmajor CLAP wrapper source
+(`modules/plugin/include/clap/cmaj_CLAPPlugin.h`). Amorph follows the same
+order-based convention (matches field observation).
+
+- **Endpoint names are free.** There is **no fixed name** like `scIn` — the bus name
+  the host shows is simply the endpoint's ID (`endpoint.endpointID`). Name it
+  `sidechain`, `scIn`, `aux`, whatever; what matters is the **declaration order**.
+- **Each audio input `stream` endpoint becomes its own audio bus**, in declaration
+  order.
+- **The first audio input endpoint (index 0) is implicitly the MAIN input; every
+  later one is a sidechain.** From the source comment: *"first endpoint is implicitly
+  main … there can only be one, and it must be index 0."* So there must be a main in
+  before any sidechain — exactly as observed in Amorph.
+- **Channel count = the stream's vector width:** `float` → mono (1), `float<2>` →
+  stereo (2). Wider vectors (`float<N>`) set the channel count but have no standard
+  mono/stereo port type (1 and 2 map to `CLAP_PORT_MONO`/`CLAP_PORT_STEREO`).
+- **No hard maximum** on the number of sidechain buses in the wrapper — it loops over
+  all audio input endpoints. The **DAW/host** decides how many sidechain routes it
+  actually supports.
+
+```cmajor
+processor MyFX
+{
+    input  stream float<2> in;       // index 0 -> MAIN input (must come first)
+    input  stream float<2> scIn;     // index 1 -> sidechain bus (name is free)
+    // input stream float<2> scIn2;  // index 2 -> a second sidechain, etc.
+    output stream float<2> out;
+}
+```
+
+> Only the **main** input must exist for an effect. Sidechain endpoints are optional;
+> declare one (or more) only when you use them. Note `addEndpointListener`'s
+> audio-shaped callback also gives per-channel min/max (or full data) — useful for
+> metering a sidechain in the UI.
+
 ## Manifest
 
 `category` and `isInstrument` reflect the type, but **do not fully distinguish the

@@ -199,8 +199,13 @@ reusable patterns* and is **not** included in this public kit.
   implementation detail (see above).
 - Amorph's `getScaleFactorLimits()` support — observed unreliable; manual `zoom`
   scaling is the working path. Re-check per Amorph version.
-- Exact sidechain endpoint name/requirement per type (is `scIn` fixed, or free as
-  long as it is a second stereo input stream?). **[unverified]**
+- ~~Exact sidechain endpoint name/requirement~~ — **resolved [verified]**: names are
+  free; each audio input `stream` is a bus; the first (index 0) is the implicit main,
+  the rest are sidechains, in declaration order; channels = vector width
+  (`float`=mono, `float<2>`=stereo). No hard max on sidechain buses in the wrapper
+  (the DAW decides). Source: `modules/plugin/include/clap/cmaj_CLAPPlugin.h`
+  (`updateAudioPortInfoCachesFromLoadedPatch`, `index == 0 ? CLAP_AUDIO_PORT_IS_MAIN`).
+  See [`docs/10_PLUGIN_TYPES.md`](docs/10_PLUGIN_TYPES.md).
 - Whether MIDI on an FX is in-only at the host level or just by convention (tested:
   in works; out not tested on FX).
 
