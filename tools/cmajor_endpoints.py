@@ -81,14 +81,40 @@ def strip_comments(text: str) -> str:
     return text
 
 
+def extract_main_block(text: str) -> str | None:
+    """Return the body of the `[[ main ]]` processor/graph (brace-balanced), or None.
+    The plugin's host-visible endpoints live on the main node; sub-processors
+    (e.g. an internal metering processor) must not be counted as plugin I/O."""
+    m = re.search(r"\b(?:processor|graph)\s+\w+\s*\[\[\s*main\s*\]\]", text)
+    if not m:
+        return None
+    brace = text.find("{", m.end())
+    if brace < 0:
+        return None
+    depth, i = 0, brace
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[brace + 1:i]
+        i += 1
+    return text[brace + 1:]  # unbalanced — return the rest
+
+
 def parse_cmajor(text: str) -> dict:
-    """Parse Cmajor source text into an endpoints dict. Names are de-duplicated
-    (graph + core often mirror the same endpoint), keeping first occurrence.
-    Commented-out declarations are ignored."""
+    """Parse Cmajor source text into an endpoints dict. If a `[[ main ]]` node
+    exists, only its endpoints are considered (sub-processor I/O is internal).
+    Names are de-duplicated; commented-out declarations are ignored."""
     text = strip_comments(text)
+    text = extract_main_block(text) or text
     params, seen_p = [], set()
     for m in RE_PARAM.finditer(text):
         name = m.group("name")
+        # MIDI message endpoints are event endpoints but NOT parameters — skip them.
+        if "midi::Message" in m.group("type"):
+            continue
         if name in seen_p:
             continue
         seen_p.add(name)

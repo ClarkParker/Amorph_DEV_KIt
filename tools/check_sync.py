@@ -40,10 +40,16 @@ RE_UI_RANGE = re.compile(
 )
 
 
+# Fallback: any quoted paramN literal anywhere (registry-driven UIs build IDs from
+# an array like { id: "param1", ... } rather than calling sendEventOrValue('param1')).
+RE_UI_PARAM_LITERAL = re.compile(r"""['"](param\d+)['"]""")
+
+
 def ui_param_ids(js: str) -> set[str]:
     ids = set()
     for m in RE_UI_PARAM.finditer(js):
         ids.add(next(g for g in m.groups() if g))
+    ids |= set(RE_UI_PARAM_LITERAL.findall(js))
     return ids
 
 

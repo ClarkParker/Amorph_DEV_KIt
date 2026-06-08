@@ -1,0 +1,17 @@
+{
+  "CmajorVersion": 1,
+  "ID": "com.devkit.examples.saturator",
+  "version": "1.0.0",
+  "name": "Saturator",
+  "description": "Oversampled stereo saturation — Amorph dev-kit FX example.",
+  "category": "effect",
+  "manufacturer": "Amorph Dev Kit",
+  "isInstrument": false,
+  "source": "SaturatorDSP.cmajor",
+  "view": {
+    "src": "SaturatorUI.js",
+    "width": 720,
+    "height": 360,
+    "resizable": true
+  }
+}

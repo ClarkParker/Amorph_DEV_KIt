@@ -1,0 +1,17 @@
+{
+  "CmajorVersion": 1,
+  "ID": "com.devkit.examples.polysynth",
+  "version": "1.0.0",
+  "name": "PolySynth",
+  "description": "16-voice subtractive synth — Amorph dev-kit instrument example.",
+  "category": "instrument",
+  "manufacturer": "Amorph Dev Kit",
+  "isInstrument": true,
+  "source": "PolySynthDSP.cmajor",
+  "view": {
+    "src": "PolySynthUI.js",
+    "width": 760,
+    "height": 380,
+    "resizable": true
+  }
+}

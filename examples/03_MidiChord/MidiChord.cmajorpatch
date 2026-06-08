@@ -1,0 +1,17 @@
+{
+  "CmajorVersion": 1,
+  "ID": "com.devkit.examples.midichord",
+  "version": "1.0.0",
+  "name": "MidiChord",
+  "description": "MIDI harmonizer — Amorph dev-kit MIDI-instrument example.",
+  "category": "instrument",
+  "manufacturer": "Amorph Dev Kit",
+  "isInstrument": true,
+  "source": "MidiChordDSP.cmajor",
+  "view": {
+    "src": "MidiChordUI.js",
+    "width": 760,
+    "height": 380,
+    "resizable": true
+  }
+}

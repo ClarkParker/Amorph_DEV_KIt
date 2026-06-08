@@ -1,0 +1,161 @@
+/*
+    PolySynth — a 16-voice subtractive synth (Amorph_Instrument).
+
+    MIDI in -> audio out. Demonstrates the verified instrument patterns:
+      - std::midi::Message handling (note on/off), matching note-off by stored
+        INT note number (never by float frequency)
+      - polyphonic voice allocation with voice stealing (oldest voice)
+      - per-voice saw oscillator (float64 phase), AR envelope, one-pole low-pass
+      - the 3-step parameter pattern; sample-rate-correct coefficients
+      - helpers at processor scope; out <- + advance() every iteration
+
+    Based on the structure in the official Amorph_Instrument prompt, adapted to be
+    lint-clean (no prefix ++, fixed-size arrays) and a touch more musical (AR env).
+*/
+
+processor PolySynth [[ main ]]
+{
+    input  event std::midi::Message midiIn;
+    output stream float<2> out;
+
+    input event float param1 [[ name: "Tune",    min: -24.0, max: 24.0,   init: 0.0,   unit: "st" ]];
+    input event float param2 [[ name: "Attack",  min: 1.0,   max: 2000.0, init: 8.0,   unit: "ms" ]];
+    input event float param3 [[ name: "Release", min: 1.0,   max: 4000.0, init: 400.0, unit: "ms" ]];
+    input event float param4 [[ name: "Cutoff",  min: 0.0,   max: 1.0,    init: 0.7 ]];
+    input event float param5 [[ name: "Drive",   min: 0.0,   max: 1.0,    init: 0.15 ]];
+    input event float param6 [[ name: "Level",   min: -24.0, max: 6.0,    init: -6.0,  unit: "dB" ]];
+
+    int   tuneSemis = 0;
+    float attackMs  = 8.0f;
+    float releaseMs = 400.0f;
+    float cutoff    = 0.7f;
+    float drive     = 0.15f;
+    float levelDb   = -6.0f;
+
+    event param1 (float v) { tuneSemis = int (clamp (v, -24.0f, 24.0f)); }
+    event param2 (float v) { attackMs  = clamp (v, 1.0f, 2000.0f); }
+    event param3 (float v) { releaseMs = clamp (v, 1.0f, 4000.0f); }
+    event param4 (float v) { cutoff    = clamp (v, 0.0f, 1.0f); }
+    event param5 (float v) { drive     = clamp (v, 0.0f, 1.0f); }
+    event param6 (float v) { levelDb   = clamp (v, -24.0f, 6.0f); }
+
+    struct Voice
+    {
+        int     noteNumber;   // stored for reliable int note-off matching
+        float   freq;
+        float   velocity;
+        float64 phase;
+        float   env;
+        float   lp;           // per-voice filter state
+        int     age;
+        bool    active;
+        bool    releasing;
+    }
+
+    Voice[16] voices;
+
+    int findFreeVoice()
+    {
+        int oldest = 0;
+        int maxAge = -1;
+        for (int i = 0; i < 16; i += 1)
+        {
+            if (! voices[i].active && voices[i].env < 0.001f)
+                return i;
+            if (voices[i].age > maxAge)
+            {
+                maxAge = voices[i].age;
+                oldest = i;
+            }
+        }
+        return oldest;   // steal the oldest
+    }
+
+    event midiIn (std::midi::Message msg)
+    {
+        if (msg.isNoteOn())
+        {
+            let v  = findFreeVoice();
+            let nn = msg.getNoteNumber();
+            voices[v].noteNumber = nn;
+            voices[v].freq       = float (std::notes::noteToFrequency (clamp (nn + tuneSemis, 0, 127)));
+            voices[v].velocity   = msg.getFloatVelocity();
+            voices[v].phase      = 0.0;
+            voices[v].env        = 0.0f;
+            voices[v].lp         = 0.0f;
+            voices[v].age        = 0;
+            voices[v].active     = true;
+            voices[v].releasing  = false;
+        }
+        else if (msg.isNoteOff())
+        {
+            let nn = msg.getNoteNumber();
+            for (int i = 0; i < 16; i += 1)
+                if (voices[i].active && voices[i].noteNumber == nn)
+                    voices[i].releasing = true;
+        }
+    }
+
+    float saturate (float x, float amount)
+    {
+        let d = 1.0f + amount * 6.0f;
+        return float (tanh (float64 (x * d))) / float (tanh (float64 (d)));
+    }
+
+    void main()
+    {
+        loop
+        {
+            let sr = float (processor.frequency);
+            let dt = float (processor.period);
+
+            let atkInc = dt / (attackMs  * 0.001f);
+            let relInc = dt / (releaseMs * 0.001f);
+            let hz     = clamp (120.0f + cutoff * cutoff * 16000.0f, 20.0f, sr * 0.45f);
+            let alpha  = clamp (hz * float (twoPi) * dt, 0.0f, 0.99f);
+
+            float mix = 0.0f;
+
+            for (int i = 0; i < 16; i += 1)
+            {
+                if (! voices[i].active && voices[i].env < 0.0001f)
+                    continue;
+
+                voices[i].age += 1;
+
+                // AR envelope
+                if (voices[i].releasing)
+                {
+                    voices[i].env -= relInc;
+                    if (voices[i].env <= 0.0f)
+                    {
+                        voices[i].env = 0.0f;
+                        voices[i].active = false;
+                    }
+                }
+                else if (voices[i].env < 1.0f)
+                {
+                    voices[i].env = min (1.0f, voices[i].env + atkInc);
+                }
+
+                // naive saw (oversample at the host level if you push the range)
+                voices[i].phase += float64 (voices[i].freq) * processor.period;
+                if (voices[i].phase >= 1.0)
+                    voices[i].phase -= 1.0;
+                let saw = float (voices[i].phase * 2.0 - 1.0);
+
+                // per-voice low-pass
+                voices[i].lp += alpha * (saw - voices[i].lp);
+
+                mix += voices[i].lp * voices[i].env * voices[i].velocity;
+            }
+
+            let shaped = saturate (mix * 0.18f, drive);
+            let g      = float (std::levels::dBtoGain (float64 (levelDb)));
+            let s      = shaped * g;
+
+            out <- float<2> (s, s);
+            advance();
+        }
+    }
+}

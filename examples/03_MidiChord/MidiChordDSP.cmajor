@@ -1,0 +1,102 @@
+/*
+    MidiChord — a MIDI harmonizer (Amorph_MIDI: MIDI in -> MIDI out, no audio).
+
+    For each incoming note it emits a chord (built on a transposed root), with
+    velocity scaling and an RNG-based humanize. Demonstrates the verified MIDI
+    patterns:
+      - input/output event std::midi::Message; std::midi::createMessage to emit
+      - ALL logic in `event midiIn`; main() is only `loop { advance(); }`
+      - std::random::RNG declared as a processor field (never called as a function)
+      - clamp note/velocity to 0..127; match note-off by int note number
+
+    Note: time-based MIDI tools (arpeggiators) need a sample clock in main(), which
+    goes beyond the "main() only advances" rule — see README. A harmonizer fits the
+    default pattern cleanly.
+*/
+
+processor MidiChord [[ main ]]
+{
+    input  event std::midi::Message midiIn;
+    output event std::midi::Message midiOut;
+
+    input event float param1 [[ name: "Transpose", min: -24.0, max: 24.0, init: 0.0, step: 1.0, unit: "st" ]];
+    input event float param2 [[ name: "Chord",     min: 0.0,   max: 4.0,  init: 3.0, step: 1.0,
+                                 text: "Off|Octave|Fifth|Triad|Seventh" ]];
+    input event float param3 [[ name: "Velocity",  min: 0.1,   max: 2.0,  init: 1.0 ]];
+    input event float param4 [[ name: "Humanize",  min: 0.0,   max: 1.0,  init: 0.0 ]];
+    input event float param5 [[ name: "Thru",      min: 0.0,   max: 1.0,  init: 1.0, step: 1.0 ]];
+
+    int   transpose = 0;
+    int   chord     = 3;
+    float velScale  = 1.0f;
+    float humanize  = 0.0f;
+    float thru      = 1.0f;
+
+    event param1 (float v) { transpose = int (clamp (v, -24.0f, 24.0f)); }
+    event param2 (float v) { chord     = int (clamp (v, 0.0f, 4.0f)); }
+    event param3 (float v) { velScale  = clamp (v, 0.1f, 2.0f); }
+    event param4 (float v) { humanize  = clamp (v, 0.0f, 1.0f); }
+    event param5 (float v) { thru      = v; }
+
+    std::random::RNG rng;
+
+    // chord intervals (semitones above the transposed root), per chord type
+    int chordCount (int c)
+    {
+        if (c == 1) return 1;   // Octave
+        if (c == 2) return 1;   // Fifth
+        if (c == 3) return 2;   // Triad
+        if (c == 4) return 3;   // Seventh
+        return 0;               // Off
+    }
+
+    int chordInterval (int c, int i)
+    {
+        if (c == 1) return 12;                      // Octave
+        if (c == 2) return 7;                       // Fifth
+        if (c == 3) return (i == 0 ? 4 : 7);        // major Triad
+        if (c == 4) return (i == 0 ? 4 : (i == 1 ? 7 : 10));  // dominant 7th
+        return 0;
+    }
+
+    int scaledVelocity (int baseVel)
+    {
+        let jitter = humanize * rng.getBipolar() * 30.0f;
+        return clamp (int (float (baseVel) * velScale + jitter), 1, 127);
+    }
+
+    event midiIn (std::midi::Message msg)
+    {
+        let isOn  = msg.isNoteOn();
+        let isOff = msg.isNoteOff();
+
+        // pass the original note through untouched
+        if (thru >= 0.5f && (isOn || isOff))
+            midiOut <- msg;
+
+        if (! isOn && ! isOff)
+        {
+            // forward non-note messages (CC, pitch bend, ...) when thru is on
+            if (thru >= 0.5f)
+                midiOut <- msg;
+            return;
+        }
+
+        let root  = clamp (msg.getNoteNumber() + transpose, 0, 127);
+        let count = chordCount (chord);
+
+        for (int i = 0; i < count; i += 1)
+        {
+            let note = clamp (root + chordInterval (chord, i), 0, 127);
+            if (isOn)
+                midiOut <- std::midi::createMessage (0x90, note, scaledVelocity (msg.getVelocity()));
+            else
+                midiOut <- std::midi::createMessage (0x80, note, 0);
+        }
+    }
+
+    void main()
+    {
+        loop { advance(); }
+    }
+}
