@@ -15,3 +15,7 @@ dist/
 /cmajor/
 /airwindows/
 /cmajor-src/
+
+# Python
+__pycache__/
+*.pyc

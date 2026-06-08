@@ -51,8 +51,21 @@ ai/
   UI_SYSTEM_PROMPT.md      Condensed UI system prompt (defers to amorph_official).
 reference/
   airwindows/README.md     How to use the Airwindows plugins as a DSP reference (clone, don't vendor).
+tools/                     Reusable Python tools: scaffolder, DSP/UI linters, endpoint parser, preflight.
 templates/                 (roadmap) Copy-to-start plugin template: DSP + UI + manifest.
 ```
+
+## Tools (Python, no dependencies)
+
+Recurring jobs are automated in [`tools/`](tools/) — pure-stdlib Python, single-file,
+easy to adapt:
+
+```bash
+python3 tools/new_plugin.py tools/examples/params.example.json --out ./MyPlugin  # scaffold DSP+UI+manifest
+python3 tools/preflight.py ./MyPlugin    # endpoint summary + DSP lint + UI lint + DSP↔UI sync
+```
+
+See [`tools/README.md`](tools/README.md) for all six tools and the param-spec format.
 
 ---
 
@@ -116,10 +129,12 @@ If you find a claim that no longer holds, open an issue or PR and update `STATUS
 ## Roadmap
 
 - [x] Scaffold: verified core documentation, AI prompts, Airwindows reference.
-- [ ] `templates/Plugin/` — minimal copy-to-start DSP + UI + manifest.
+- [x] Official Amorph IDE prompts captured + reconciled (`ai/amorph_official/`).
+- [x] Python tools: scaffolder, DSP/UI linters, endpoint parser, sync check, preflight.
+- [ ] `templates/Plugin/` — minimal copy-to-start DSP + UI + manifest (or use `new_plugin.py`).
 - [ ] `examples/` — a stereo saturator (oversampled) and a small synth.
 - [ ] A spectrum/meter output-event pattern with a Canvas visualiser.
-- [ ] CI sanity check that documented Cmajor snippets compile.
+- [ ] CI sanity check (run `preflight.py --strict`) on documented/example plugins.
 
 ## License
 

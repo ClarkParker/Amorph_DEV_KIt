@@ -1,0 +1,16 @@
+{
+  "name": "Example Drive",
+  "id": "com.yourcompany.exampledrive",
+  "manufacturer": "Your Company",
+  "description": "A minimal stereo drive — scaffold starting point.",
+  "type": "fx",
+  "width": 800,
+  "height": 400,
+  "params": [
+    { "name": "Drive",  "min": 0.0, "max": 1.0, "init": 0.3 },
+    { "name": "Tone",   "min": 0.0, "max": 1.0, "init": 0.5 },
+    { "name": "Mix",    "min": 0.0, "max": 1.0, "init": 0.5 },
+    { "name": "Output", "min": -24.0, "max": 6.0, "init": 0.0, "unit": "dB" },
+    { "name": "Bypass", "min": 0.0, "max": 1.0, "init": 0.0 }
+  ]
+}
