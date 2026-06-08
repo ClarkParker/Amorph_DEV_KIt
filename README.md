@@ -44,6 +44,7 @@ docs/
   07_SCALING.md            The CSS-`zoom` scaling method + host-wrapper fixes (battle-tested).
   08_UI_RENDERING.md       Procedural/photoreal UI techniques — with Amorph compatibility caveats.
   09_PITFALLS_CHECKLIST.md Quick pitfalls lookup + pre-flight and test checklists.
+  10_PLUGIN_TYPES.md       The three Amorph plugin types and their I/O endpoint structure.
 ai/
   DSP_SYSTEM_PROMPT.md     System prompt to hand an AI assistant before DSP coding.
   UI_SYSTEM_PROMPT.md      System prompt to hand an AI assistant before UI coding.

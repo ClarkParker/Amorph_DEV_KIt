@@ -56,7 +56,9 @@ One top-level `processor` or `graph`. It declares:
 - **Audio I/O** as streams: `input stream float<2> in;` / `output stream float<2> out;`
   for stereo (use `float` for mono). An instrument typically has
   `output stream float<2> out;` and a MIDI input
-  `input event std::midi::Message midiIn;`.
+  `input event std::midi::Message midiIn;`. The exact I/O set depends on the plugin
+  type (Audio FX / Audio Instrument / MIDI Instrument) — see
+  [`10_PLUGIN_TYPES.md`](10_PLUGIN_TYPES.md).
 - **Parameters** as `input event`/`input value` endpoints named `param1..paramN`,
   each with a `[[ name: ... ]]` annotation.
 - **Meters / scopes** as `output event` endpoints the UI listens to.
