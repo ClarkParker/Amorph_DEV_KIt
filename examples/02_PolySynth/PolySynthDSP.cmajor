@@ -60,11 +60,11 @@ processor PolySynth [[ main ]]
         int maxAge = -1;
         for (int i = 0; i < 16; i += 1)
         {
-            if (! voices[i].active && voices[i].env < 0.001f)
+            if (! voices.at(i).active && voices.at(i).env < 0.001f)
                 return i;
-            if (voices[i].age > maxAge)
+            if (voices.at(i).age > maxAge)
             {
-                maxAge = voices[i].age;
+                maxAge = voices.at(i).age;
                 oldest = i;
             }
         }
@@ -77,22 +77,22 @@ processor PolySynth [[ main ]]
         {
             let v  = findFreeVoice();
             let nn = msg.getNoteNumber();
-            voices[v].noteNumber = nn;
-            voices[v].freq       = float (std::notes::noteToFrequency (clamp (nn + tuneSemis, 0, 127)));
-            voices[v].velocity   = msg.getFloatVelocity();
-            voices[v].phase      = 0.0;
-            voices[v].env        = 0.0f;
-            voices[v].lp         = 0.0f;
-            voices[v].age        = 0;
-            voices[v].active     = true;
-            voices[v].releasing  = false;
+            voices.at(v).noteNumber = nn;
+            voices.at(v).freq       = float (std::notes::noteToFrequency (clamp (nn + tuneSemis, 0, 127)));
+            voices.at(v).velocity   = msg.getFloatVelocity();
+            voices.at(v).phase      = 0.0;
+            voices.at(v).env        = 0.0f;
+            voices.at(v).lp         = 0.0f;
+            voices.at(v).age        = 0;
+            voices.at(v).active     = true;
+            voices.at(v).releasing  = false;
         }
         else if (msg.isNoteOff())
         {
             let nn = msg.getNoteNumber();
             for (int i = 0; i < 16; i += 1)
-                if (voices[i].active && voices[i].noteNumber == nn)
-                    voices[i].releasing = true;
+                if (voices.at(i).active && voices.at(i).noteNumber == nn)
+                    voices.at(i).releasing = true;
         }
     }
 
@@ -118,36 +118,36 @@ processor PolySynth [[ main ]]
 
             for (int i = 0; i < 16; i += 1)
             {
-                if (! voices[i].active && voices[i].env < 0.0001f)
+                if (! voices.at(i).active && voices.at(i).env < 0.0001f)
                     continue;
 
-                voices[i].age += 1;
+                voices.at(i).age += 1;
 
                 // AR envelope
-                if (voices[i].releasing)
+                if (voices.at(i).releasing)
                 {
-                    voices[i].env -= relInc;
-                    if (voices[i].env <= 0.0f)
+                    voices.at(i).env -= relInc;
+                    if (voices.at(i).env <= 0.0f)
                     {
-                        voices[i].env = 0.0f;
-                        voices[i].active = false;
+                        voices.at(i).env = 0.0f;
+                        voices.at(i).active = false;
                     }
                 }
-                else if (voices[i].env < 1.0f)
+                else if (voices.at(i).env < 1.0f)
                 {
-                    voices[i].env = min (1.0f, voices[i].env + atkInc);
+                    voices.at(i).env = min (1.0f, voices.at(i).env + atkInc);
                 }
 
                 // naive saw (oversample at the host level if you push the range)
-                voices[i].phase += float64 (voices[i].freq) * processor.period;
-                if (voices[i].phase >= 1.0)
-                    voices[i].phase -= 1.0;
-                let saw = float (voices[i].phase * 2.0 - 1.0);
+                voices.at(i).phase += float64 (voices.at(i).freq) * processor.period;
+                if (voices.at(i).phase >= 1.0)
+                    voices.at(i).phase -= 1.0;
+                let saw = float (voices.at(i).phase * 2.0 - 1.0);
 
                 // per-voice low-pass
-                voices[i].lp += alpha * (saw - voices[i].lp);
+                voices.at(i).lp += alpha * (saw - voices.at(i).lp);
 
-                mix += voices[i].lp * voices[i].env * voices[i].velocity;
+                mix += voices.at(i).lp * voices.at(i).env * voices.at(i).velocity;
             }
 
             let shaped = saturate (mix * 0.18f, drive);

@@ -133,6 +133,65 @@ for Cmajor-in-Amorph correctness. Facts established there (**[verified-official]
 
 ---
 
+## Compiler verification (cmaj 1.0.3159, Linux x64)
+
+A full audit pass was run against the **real Cmajor compiler** (release binary
+1.0.3159, `cmaj generate --target=cpp`). Tag: **[compiler-verified]**.
+
+**Everything in the kit compiles:**
+
+| Artifact | Result |
+|---|---|
+| `examples/01_SaturatorFX` (incl. the `* 4` oversampled graph + `float<2>` streams across the node) | ✓ clean |
+| `examples/02_PolySynth` | ✓ clean (after switching `voices[i]` → `voices.at(i)`; `int` indexing compiled but emitted per-access range-check performance warnings) |
+| `examples/03_MidiChord` | ✓ clean |
+| `tools/new_plugin.py` scaffold output, all three types (fx / instrument / midi) | ✓ clean |
+| All UI `.js` files | ✓ valid ES modules (`node --check`, Node 22) |
+
+**Language probes (claims tested directly):**
+
+| Claim | Verdict |
+|---|---|
+| `double` does not exist | ✓ compile error (`'double' is not a type name in Cmaj — did you mean float64?`) |
+| `input`/`output`/`stream` as identifier names | ✓ compile error |
+| prefix `++i` in a `for` header | compiles — the no-`++` rule is style, not a compiler rule |
+| custom parameter names (`paramFancyName`) | ✓ compile + bindable (prompt claim confirmed) |
+| `std::random::RNG` as a processor field | ✓ compiles |
+| `lerp`, `processor.id`, `processor.session`, `std::oscillators::waveshape::sine`, `wrap<N>` | ✓ all compile |
+| `float<2>` streams across a `* 4` oversampled node | ✓ compiles (upgraded from [field-tested]) |
+
+**Official-prompt inaccuracies found by the probes** (guardrails stated as hard
+rules that the compiler does not actually enforce):
+
+1. **Unsized `float[]` compiles** — it is a *slice* type, and even `.at(0) = x` on an
+   empty slice compiles. It is still a real bug to use one as a buffer (it's an empty
+   view), so the linter keeps flagging it — now as a **warning** with an accurate
+   message, not a compile-error claim.
+2. **`.size` works** — `float[16] buf; buf.size` compiles fine. The prompt's "NO
+   `.size` property" is wrong; the lint rule was removed.
+3. **`select()` requires vector arguments** — scalar `select(true, a, b)` is a
+   compile error. The prompt's cheatsheet does not mention the restriction.
+
+### Reproducing the compile check (headless CI)
+
+The release `cmaj` binary links WebKitGTK/JACK for its GUI/audio features, which
+plain CI containers lack. The compile path never calls them, so stubs suffice:
+
+```bash
+curl -sLO https://github.com/cmajor-lang/cmajor/releases/download/1.0.3159/cmajor.linux.x64.zip
+unzip -q cmajor.linux.x64.zip -d cmaj-bin
+apt-get install -y libsoup2.4-1 libjack-jackd2-0
+# stub the webkit sonames (34 symbols, never called during `cmaj generate`):
+readelf --dyn-syms -W cmaj-bin/linux/x64/cmaj | awk '$7=="UND"{print $8}' \
+  | grep -E '^(webkit_|jsc_|soup_)' | sort -u \
+  | sed 's/.*/void* &(void){return 0;}/' > stub.c
+gcc -shared -fPIC -o /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so.37 stub.c
+gcc -shared -fPIC -o /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so.18 stub.c
+cmaj-bin/linux/x64/cmaj generate --target=cpp --output=/dev/null path/to/My.cmajorpatch
+```
+
+---
+
 ## Bridge API — verified method surface
 
 All confirmed in `javascript/cmaj_api/cmaj-patch-connection.js`. **[verified]**

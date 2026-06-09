@@ -175,10 +175,18 @@ full cheatsheets.
   `paramDrive`, `paramMix`, etc. bind fine. (The old "custom names break binding"
   claim is false.) The `param1..paramN` convention is still recommended so the UI/DSP
   contract stays obvious.
-- **Arrays are fixed-size only.** No unsized `float[] buf`, no runtime `.wrap(size)`,
-  no `.size` property — sizes must be compile-time constants. Index with `.at(i)`.
-- **Avoid prefix `++`/`--`** (`x += 1`). The prompts' own `for` headers use `++i`,
-  which compiles; the stated rule is the safe default.
+- **Use fixed-size arrays for buffers.** An unsized `float[]` *compiles* (it is a
+  slice type) but is an **empty view, not a buffer** — using it for delay/state is a
+  silent bug. Buffer sizes must be compile-time constants (`float[65536]`); no
+  runtime `.wrap(size)`. **[compiler-verified]** `.size` on a fixed array *does*
+  work (the official prompt's "no `.size`" is overcautious). Prefer `.at(i)` for
+  indexing — plain `int` indexing compiles but emits a per-access range-check
+  performance warning.
+- **Avoid prefix `++`/`--`** (`x += 1`). `++i` in a `for` header compiles
+  **[compiler-verified]**; the stated rule is the safe style default.
+- **`select(cond, a, b)` requires vector arguments** — calling it with scalars is a
+  compile error ("select() requires vector arguments"). **[compiler-verified]** For
+  scalars use a ternary-style `if` or arithmetic.
 
 ## Top-level structs
 

@@ -71,7 +71,12 @@ Other host-specific notes the prompts establish (all **[verified-official]**):
 
 - The DSP prompts forbid prefix `++`/`--`, yet their own example `for` loops use
   `++i`. Following the stated rule (`i += 1`) is the safe choice; `++i` in a `for`
-  header evidently compiles in practice.
+  header **compiles** (compiler-verified).
+- Three cheatsheet claims are inaccurate against the real compiler (cmaj 1.0.3159,
+  see `STATUS.md` → "Compiler verification"): unsized `float[]` **compiles** (it's a
+  slice — still don't use it as a buffer, it's an empty view); `.size` on arrays
+  **works** (the "NO `.size`" rule is wrong); `select()` **requires vector
+  arguments** (scalar calls are a compile error, which the cheatsheet omits).
 - The spectrum sections say "C++ changes ARE required … PluginProcessor.cpp must
   handle `spectrumOut`." That applies to exporting the patch as a standalone JUCE
   plugin. **In the Amorph host, `addEndpointListener` receives the events directly**
