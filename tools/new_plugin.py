@@ -89,8 +89,8 @@ def gen_dsp(proc: str, ptype: str, params) -> str:
               "    // input  stream float<2> scIn;   // optional sidechain (index 1)\n"
               "    output stream float<2> out;\n")
         body = ("        loop\n        {\n"
-                "            let l = in[0];\n"
-                "            let r = in[1];\n\n"
+                "            var l = in[0];\n"
+                "            var r = in[1];\n\n"
                 "            // ---- your DSP here ----\n\n"
                 "            out <- float<2> (l, r);\n"
                 "            advance();\n        }\n")
@@ -99,8 +99,8 @@ def gen_dsp(proc: str, ptype: str, params) -> str:
               "    output stream float<2> out;\n")
         body = ("        loop\n        {\n"
                 "            // ---- synth voices -> outL/outR ----\n"
-                "            let outL = 0.0f;\n"
-                "            let outR = 0.0f;\n\n"
+                "            var outL = 0.0f;\n"
+                "            var outR = 0.0f;\n\n"
                 "            out <- float<2> (outL, outR);\n"
                 "            advance();\n        }\n")
     else:  # midi

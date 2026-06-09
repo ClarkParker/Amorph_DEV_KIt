@@ -1,0 +1,246 @@
+/*
+    Cookbook.cmajor — verified, reusable DSP building blocks for Amorph plugins.
+
+    This is the canonical, TESTED version of the recipes documented in
+    docs/11_DSP_COOKBOOK.md. Unit tests live in tests/Cookbook.cmajtest and run
+    with `cmaj test`. Copy the helpers you need into your plugin (Cmajor has no
+    imports across patches) — they are dependency-free.
+
+    Conventions: stateless helpers are plain functions; stateful blocks are a
+    struct + a process function taking the struct by reference. All coefficients
+    derive from the sample rate you pass in — nothing is hardcoded.
+*/
+
+namespace cookbook
+{
+    //==============================================================================
+    // 1. Parameter smoother — one-pole slew toward a target (zipper-noise killer).
+    struct Smoother
+    {
+        float value;
+    }
+
+    float smooth (Smoother& s, float target, float coeff)      // coeff ~0.001..0.05
+    {
+        s.value += coeff * (target - s.value);
+        return s.value;
+    }
+
+    //==============================================================================
+    // 2. One-pole low-pass / high-pass.
+    struct OnePole
+    {
+        float z;
+    }
+
+    float onePoleAlpha (float cutoffHz, float sampleRate)
+    {
+        let hz = clamp (cutoffHz, 1.0f, sampleRate * 0.45f);
+        return clamp (hz * float (twoPi) / sampleRate, 0.0f, 0.99f);
+    }
+
+    float processLP (OnePole& f, float x, float alpha)
+    {
+        f.z += alpha * (x - f.z);
+        return f.z;
+    }
+
+    float processHP (OnePole& f, float x, float alpha)
+    {
+        return x - processLP (f, x, alpha);
+    }
+
+    //==============================================================================
+    // 3. TPT state-variable filter (Zavalishin) — stable when modulated.
+    //    Outputs LP / BP / HP from one tick.
+    struct SVF
+    {
+        float ic1, ic2;
+    }
+
+    struct SVFOut
+    {
+        float lp, bp, hp;
+    }
+
+    SVFOut processSVF (SVF& s, float x, float cutoffHz, float q, float sampleRate)
+    {
+        let hz = clamp (cutoffHz, 10.0f, sampleRate * 0.45f);
+        let g  = float (tan (float64 (pi) * float64 (hz) / float64 (sampleRate)));
+        let k  = 1.0f / max (q, 0.1f);
+        let a1 = 1.0f / (1.0f + g * (g + k));
+        let a2 = g * a1;
+        let a3 = g * a2;
+
+        let v3 = x - s.ic2;
+        let v1 = a1 * s.ic1 + a2 * v3;
+        let v2 = s.ic2 + a2 * s.ic1 + a3 * v3;
+        s.ic1 = 2.0f * v1 - s.ic1;
+        s.ic2 = 2.0f * v2 - s.ic2;
+
+        SVFOut o;
+        o.lp = v2;
+        o.bp = v1;
+        o.hp = x - k * v1 - v2;
+        return o;
+    }
+
+    //==============================================================================
+    // 4. RBJ peaking biquad (EQ band) — coefficients + transposed direct form II.
+    struct Biquad
+    {
+        float b0, b1, b2, a1, a2;   // normalised (a0 == 1)
+        float z1, z2;
+    }
+
+    void setPeak (Biquad& f, float freqHz, float q, float gainDb, float sampleRate)
+    {
+        let A     = float (pow (10.0, float64 (gainDb) / 40.0));
+        let w0    = float (twoPi) * clamp (freqHz, 10.0f, sampleRate * 0.45f) / sampleRate;
+        let cosW  = float (cos (float64 (w0)));
+        let alpha = float (sin (float64 (w0))) / (2.0f * max (q, 0.1f));
+        let a0    = 1.0f + alpha / A;
+
+        f.b0 = (1.0f + alpha * A) / a0;
+        f.b1 = (-2.0f * cosW) / a0;
+        f.b2 = (1.0f - alpha * A) / a0;
+        f.a1 = (-2.0f * cosW) / a0;
+        f.a2 = (1.0f - alpha / A) / a0;
+    }
+
+    float processBiquad (Biquad& f, float x)
+    {
+        let y = f.b0 * x + f.z1;
+        f.z1 = f.b1 * x - f.a1 * y + f.z2;
+        f.z2 = f.b2 * x - f.a2 * y;
+        return y;
+    }
+
+    //==============================================================================
+    // 5. Fractional delay read — linear interpolation, non-negative index math.
+    //    Buffer must be a power-of-two-or-any fixed size; pass its length.
+    float readDelay (const float[65536]& buf, int writeHead, float delaySamples)
+    {
+        let len  = 65536;
+        let d    = clamp (delaySamples, 1.0f, float (len - 2));
+        let di   = int (d);
+        let frac = d - float (di);
+        let i0   = (writeHead - di + len) % len;
+        let i1   = (i0 - 1 + len) % len;
+        let s0   = buf.at (i0);
+        let s1   = buf.at (i1);
+        return s0 + frac * (s1 - s0);
+    }
+
+    //==============================================================================
+    // 6. LFO — phase accumulator with sine and triangle shapes (phase 0..1).
+    struct LFO
+    {
+        float64 phase;
+    }
+
+    float tickPhase (LFO& l, float rateHz, float sampleRate)
+    {
+        l.phase += float64 (rateHz) / float64 (sampleRate);
+        if (l.phase >= 1.0)
+            l.phase -= 1.0;
+        return float (l.phase);
+    }
+
+    float lfoSine (float phase)      { return float (sin (float64 (phase) * twoPi)); }
+    float lfoTriangle (float phase)  { return 1.0f - 4.0f * abs (phase - 0.5f); }
+
+    //==============================================================================
+    // 7. Envelope follower — independent attack / release (ballistics).
+    struct Follower
+    {
+        float env;
+    }
+
+    float followCoeff (float ms, float sampleRate)
+    {
+        return float (exp (-1.0 / (float64 (max (ms, 0.01f)) * 0.001 * float64 (sampleRate))));
+    }
+
+    float follow (Follower& f, float x, float attackCoeff, float releaseCoeff)
+    {
+        let mag = abs (x);
+        let c   = mag > f.env ? attackCoeff : releaseCoeff;
+        f.env   = c * f.env + (1.0f - c) * mag;
+        return f.env;
+    }
+
+    //==============================================================================
+    // 8. Compressor gain computer — hard knee, dB domain in, linear gain out.
+    float compressorGain (float levelDb, float thresholdDb, float ratio)
+    {
+        let over = levelDb - thresholdDb;
+        if (over <= 0.0f)
+            return 1.0f;
+        let grDb = over * (1.0f - 1.0f / max (ratio, 1.0f));
+        return float (std::levels::dBtoGain (float64 (-grDb)));
+    }
+
+    //==============================================================================
+    // 9. Soft clippers — tanh (with constant make-up) and cubic.
+    float clipTanh (float x, float amount)                      // amount 0..1
+    {
+        let d = 1.0f + amount * 9.0f;
+        return float (tanh (float64 (x * d))) / float (tanh (float64 (d)));
+    }
+
+    float clipCubic (float x)                                   // hard limit at ±1
+    {
+        let c = clamp (x, -1.0f, 1.0f);
+        return c - (c * c * c) / 3.0f;                          // max amplitude 2/3
+    }
+
+    //==============================================================================
+    // 10. DC blocker — removes offset without touching audible lows.
+    struct DCBlocker
+    {
+        float x1, y1;
+    }
+
+    float blockDC (DCBlocker& d, float x)
+    {
+        let y = x - d.x1 + 0.995f * d.y1;
+        d.x1 = x;
+        d.y1 = y;
+        return y;
+    }
+
+    //==============================================================================
+    // 11. Equal-power crossfade — unity perceived level across the sweep.
+    float xfadeA (float mix01)  { return float (cos (float64 (clamp (mix01, 0.0f, 1.0f)) * pi * 0.5)); }
+    float xfadeB (float mix01)  { return float (sin (float64 (clamp (mix01, 0.0f, 1.0f)) * pi * 0.5)); }
+
+    //==============================================================================
+    // 12. Stereo width — mid/side scaling (1 = unchanged, 0 = mono, >1 = wider).
+    float<2> stereoWidth (float<2> inFrame, float width)
+    {
+        let mid  = (inFrame[0] + inFrame[1]) * 0.5f;
+        let side = (inFrame[0] - inFrame[1]) * 0.5f * clamp (width, 0.0f, 2.0f);
+        return float<2> (mid + side, mid - side);
+    }
+
+    //==============================================================================
+    // 13. LCG noise — cheap white noise, deterministic per seed.
+    struct NoiseLCG
+    {
+        int seed;
+    }
+
+    float noise (NoiseLCG& n)
+    {
+        n.seed = (n.seed * 1103515245 + 12345) & 0x7fffffff;
+        return (float (n.seed) / 2147483647.0f) * 2.0f - 1.0f;
+    }
+
+    //==============================================================================
+    // 14. Denormal guard — flush tiny values in long feedback paths.
+    float flushDenormal (float x)
+    {
+        return abs (x) < 1.0e-15f ? 0.0f : x;
+    }
+}

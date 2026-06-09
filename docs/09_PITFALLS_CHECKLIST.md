@@ -72,6 +72,20 @@ Quick lookup when something doesn't work, plus a pre-flight and a test checklist
 - [ ] Everything torn down in `disconnectedCallback`.
 - [ ] Template literals: backticks escaped, backslashes doubled.
 
+## Release checklist (versioning a plugin)
+
+- [ ] `version` bumped in the `.cmajorpatch` (semver: breaking-sound = major).
+- [ ] **No parameter renumbered, removed, or repurposed** since the last release —
+      new params appended at the next free number, each with a backward-safe `init`.
+- [ ] Old presets/projects from the previous version load and sound identical
+      (open a session saved with the old build).
+- [ ] `python3 tools/preflight.py . --strict` and `manifest_check.py --strict` clean.
+- [ ] Unit tests pass (`cmaj test tests/`) if the plugin has them.
+- [ ] Version-history comment in the DSP/UI headers extended (never rewritten).
+- [ ] Tested at 44.1 / 48 / 96 kHz and at least two buffer sizes.
+- [ ] Tested in a fresh host session AND via project reload (lifecycle leaks show
+      up on the second load).
+
 ## Test checklist
 
 - [ ] Load: all parameters at correct defaults; knobs move the sound; meters react.

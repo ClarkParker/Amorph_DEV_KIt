@@ -32,19 +32,27 @@ presets.
 
 ## What's in the kit
 
+**New here? Start with [`GETTING_STARTED.md`](GETTING_STARTED.md)** — zero to a
+compiled plugin in ~15 minutes.
+
 ```
+GETTING_STARTED.md         Tutorial: scaffold, check, fill in DSP, compile, restyle.
 STATUS.md                  Verification log: sources, what was confirmed/corrected, open questions.
 docs/
   01_ARCHITECTURE.md       The three layers, the manifest, the bridge.
   02_DSP_CMAJOR.md         Writing the DSP: skeleton, parameters, sample rate, building blocks.
   03_UI_WEBCOMPONENT.md    Writing the UI: the single-file contract, the bridge, lifecycle, cleanup.
-  04_PARAMETERS.md         Parameter design: ranges, naming, formatting, pan law, bypass.
+  04_PARAMETERS.md         Parameter design: ranges, naming, presets/state, pan law, bypass.
   05_AMORPH_NOTES.md       Amorph-specific WebView behaviour you must know.
   06_OVERSAMPLING.md       Per-node oversampling in Cmajor (verified) and when to use it.
   07_SCALING.md            The CSS-`zoom` scaling method + host-wrapper fixes (battle-tested).
   08_UI_RENDERING.md       Procedural/photoreal UI techniques — with Amorph compatibility caveats.
-  09_PITFALLS_CHECKLIST.md Quick pitfalls lookup + pre-flight and test checklists.
+  09_PITFALLS_CHECKLIST.md Quick pitfalls lookup + pre-flight, release and test checklists.
   10_PLUGIN_TYPES.md       The three Amorph plugin types and their I/O endpoint structure.
+  11_DSP_COOKBOOK.md       Verified DSP building blocks (filters, dynamics, clip, LFO, …).
+  12_TESTING.md            Unit-testing DSP with `cmaj test` + debugging patterns.
+cookbook/Cookbook.cmajor   The canonical, unit-tested cookbook library (copy what you need).
+tests/Cookbook.cmajtest    Unit tests for the cookbook (all passing, run in CI).
 ai/
   amorph_official/         The verbatim system prompts Amorph's own IDE emits (authoritative).
   DSP_SYSTEM_PROMPT.md     Condensed DSP system prompt (defers to amorph_official).
@@ -135,8 +143,11 @@ If you find a claim that no longer holds, open an issue or PR and update `STATUS
 - [x] `examples/` — one worked plugin per type (oversampled saturator, poly synth, MIDI harmonizer), each passing preflight.
 - [x] A meter output-event pattern with a Canvas visualiser (in the saturator example).
 - [x] More tools: `manifest_check.py`, `params_from_dsp.py`, a pre-commit hook.
+- [x] Audit against the real compiler (cmaj 1.0.3159) — see `STATUS.md`.
+- [x] Getting-started tutorial, DSP cookbook (unit-tested), testing guide.
+- [x] CI workflow: static checks + real compile + `cmaj test` (`.github/workflows/ci.yml`).
 - [ ] `templates/Plugin/` — minimal copy-to-start (or just use `new_plugin.py`).
-- [ ] CI workflow running `preflight.py --strict` on the example plugins.
+- [ ] `runScript()` golden-data regression test for a full example effect.
 
 ## License
 

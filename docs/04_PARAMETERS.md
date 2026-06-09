@@ -68,6 +68,29 @@ let panL = float (sqrt (clamp (0.5 + s * depth * 0.5, 0.0, 1.0))) * norm;
 let panR = float (sqrt (clamp (0.5 - s * depth * 0.5, 0.0, 1.0))) * norm;
 ```
 
+## Presets & state — what persists where
+
+Three storage layers exist; choosing the wrong one is a classic source of "my
+setting didn't come back" bugs:
+
+| Layer | API | Round-trips with DAW project/preset? | Use for |
+|---|---|---|---|
+| **Parameters** | `paramN` endpoints | **Yes** — saved, automated, preset-recalled | everything that affects sound |
+| **Stored UI state** | `pc.sendStoredStateValue(key, json)` / `requestStoredStateValue` / `addStoredStateValueListener` | **Yes** (saved with the host project) | UI-only state worth keeping per project: selected tab, editor zoom, A/B slot |
+| **`localStorage`** | browser API | **No** — per machine, not per project | machine-local conveniences only (e.g. "tooltips seen") |
+
+Rules of thumb:
+
+- If it changes the audio, it **must** be a parameter — never `localStorage`, never
+  stored-state. Otherwise presets lie.
+- On load, restore *visual-only* state from stored-state/localStorage, but **do not
+  push values into the DSP** on load — the host recalls parameters itself. (The
+  bypass rule below is the canonical example.)
+- Preset compatibility is the parameter-number contract: **append** new parameters
+  at the next free number with a sensible `init` so old presets (which lack the new
+  param) load with correct defaults. Never renumber, never reuse a number, never
+  change a parameter's meaning between versions.
+
 ## Bypass
 
 - Dedicate one parameter to global bypass. In the DSP, check it at the top of the

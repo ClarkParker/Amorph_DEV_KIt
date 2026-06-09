@@ -1,0 +1,183 @@
+// Unit tests for cookbook/Cookbook.cmajor — run with:
+//   cmaj test tests/Cookbook.cmajtest
+// Format reference: cmajor docs "Cmaj Test File Format".
+
+## global ("../cookbook/Cookbook.cmajor")
+
+## testFunction()
+
+bool near (float a, float b, float tol)     { return abs (a - b) <= tol; }
+
+// 9. soft clippers
+bool clipTanhZeroIsZero()       { return cookbook::clipTanh (0.0f, 0.5f) == 0.0f; }
+bool clipTanhIsBounded()        { return abs (cookbook::clipTanh (10.0f, 1.0f)) <= 1.0001f; }
+bool clipTanhUnityAtFull()      { return near (cookbook::clipTanh (1.0f, 0.3f), 1.0f, 1.0e-4f); }
+bool clipCubicLimits()          { return near (cookbook::clipCubic (2.0f), 2.0f / 3.0f, 1.0e-5f); }
+
+// 11. equal-power crossfade: a^2 + b^2 == 1 across the sweep
+bool xfadeEqualPower()
+{
+    for (int i = 0; i <= 10; i += 1)
+    {
+        let m = float (i) * 0.1f;
+        let a = cookbook::xfadeA (m);
+        let b = cookbook::xfadeB (m);
+        if (! near (a * a + b * b, 1.0f, 1.0e-5f))
+            return false;
+    }
+    return true;
+}
+
+// 8. compressor gain computer
+bool compressorBelowThresholdIsUnity()  { return cookbook::compressorGain (-30.0f, -20.0f, 4.0f) == 1.0f; }
+bool compressorReducesAboveThreshold()  { return cookbook::compressorGain (-10.0f, -20.0f, 4.0f) < 1.0f; }
+bool compressorRatioOneIsUnity()        { return near (cookbook::compressorGain (0.0f, -20.0f, 1.0f), 1.0f, 1.0e-5f); }
+
+// 12. stereo width
+bool widthOneIsIdentity()
+{
+    let o = cookbook::stereoWidth (float<2> (0.7f, -0.3f), 1.0f);
+    return near (o[0], 0.7f, 1.0e-6f) && near (o[1], -0.3f, 1.0e-6f);
+}
+bool widthZeroIsMono()
+{
+    let o = cookbook::stereoWidth (float<2> (1.0f, 0.0f), 0.0f);
+    return near (o[0], 0.5f, 1.0e-6f) && near (o[1], 0.5f, 1.0e-6f);
+}
+
+// 6. LFO shapes
+bool trianglePeaks()
+{
+    return near (cookbook::lfoTriangle (0.0f), -1.0f, 1.0e-6f)
+        && near (cookbook::lfoTriangle (0.5f),  1.0f, 1.0e-6f)
+        && near (cookbook::lfoTriangle (1.0f), -1.0f, 1.0e-6f);
+}
+
+// 13. noise stays in range and is non-constant
+bool noiseBoundedAndAlive()
+{
+    cookbook::NoiseLCG n;
+    n.seed = 12345;
+    float lo = 1.0f, hi = -1.0f;
+    for (int i = 0; i < 256; i += 1)
+    {
+        let v = cookbook::noise (n);
+        if (abs (v) > 1.0f) return false;
+        lo = min (lo, v);
+        hi = max (hi, v);
+    }
+    return hi > lo;
+}
+
+// 2. one-pole: alpha clamped, LP converges to a constant input
+bool onePoleConverges()
+{
+    cookbook::OnePole f;
+    f.z = 0.0f;
+    let alpha = cookbook::onePoleAlpha (1000.0f, 48000.0f);
+    float y = 0.0f;
+    for (int i = 0; i < 4000; i += 1)
+        y = cookbook::processLP (f, 1.0f, alpha);
+    return near (y, 1.0f, 1.0e-3f);
+}
+
+// 7. envelope follower rises toward |x| then decays
+bool followerBallistics()
+{
+    cookbook::Follower f;
+    f.env = 0.0f;
+    let atk = cookbook::followCoeff (5.0f, 48000.0f);
+    let rel = cookbook::followCoeff (50.0f, 48000.0f);
+    for (int i = 0; i < 2000; i += 1)
+        f.follow (1.0f, atk, rel);
+    let peak = f.env;
+    for (int i = 0; i < 2000; i += 1)
+        f.follow (0.0f, atk, rel);
+    return peak > 0.9f && f.env < peak;
+}
+
+// 10. DC blocker removes a constant offset
+bool dcBlockerRemovesDC()
+{
+    cookbook::DCBlocker d;
+    d.x1 = 0.0f;
+    d.y1 = 0.0f;
+    float y = 1.0f;
+    for (int i = 0; i < 20000; i += 1)
+        y = cookbook::blockDC (d, 1.0f);
+    return abs (y) < 1.0e-2f;
+}
+
+// 3. SVF stays bounded and splits bands sensibly
+bool svfBoundedAndSplits()
+{
+    cookbook::SVF s;
+    s.ic1 = 0.0f;
+    s.ic2 = 0.0f;
+    float lpAcc = 0.0f;
+    for (int i = 0; i < 1000; i += 1)
+    {
+        let o = cookbook::processSVF (s, 1.0f, 1000.0f, 0.707f, 48000.0f);
+        if (abs (o.lp) > 10.0f || abs (o.bp) > 10.0f || abs (o.hp) > 10.0f)
+            return false;
+        lpAcc = o.lp;
+    }
+    return near (lpAcc, 1.0f, 0.05f);   // LP of DC input converges to the input
+}
+
+// 4. biquad peak at 0 dB is (near) identity
+bool biquadZeroGainIsIdentity()
+{
+    cookbook::Biquad f;
+    f.z1 = 0.0f;
+    f.z2 = 0.0f;
+    f.setPeak (1000.0f, 1.0f, 0.0f, 48000.0f);
+    for (int i = 0; i < 64; i += 1)
+    {
+        let x = cookbook::lfoSine (float (i) * 0.13f);
+        if (! near (cookbook::processBiquad (f, x), x, 1.0e-4f))
+            return false;
+    }
+    return true;
+}
+
+// 1. smoother approaches the target
+bool smootherConverges()
+{
+    cookbook::Smoother s;
+    s.value = 0.0f;
+    for (int i = 0; i < 5000; i += 1)
+        s.smooth (1.0f, 0.005f);
+    return near (s.value, 1.0f, 1.0e-2f);
+}
+
+// 14. denormal guard
+bool denormalFlushes()      { return cookbook::flushDenormal (1.0e-20f) == 0.0f
+                                  && cookbook::flushDenormal (0.5f) == 0.5f; }
+
+## testCompile()
+
+// The cookbook compiles inside a realistic processor shell.
+processor CookbookShell
+{
+    input  stream float<2> in;
+    output stream float<2> out;
+
+    cookbook::SVF svf;
+    cookbook::Follower fol;
+    cookbook::DCBlocker dc;
+    cookbook::Smoother smo;
+
+    void main()
+    {
+        let sr = float (processor.frequency);
+        loop
+        {
+            let o = cookbook::processSVF (svf, in[0], 800.0f, 0.7f, sr);
+            let e = cookbook::follow (fol, o.bp, 0.99f, 0.999f);
+            let y = cookbook::blockDC (dc, cookbook::clipTanh (o.lp, cookbook::smooth (smo, e, 0.01f)));
+            out <- cookbook::stereoWidth (float<2> (y, y), 1.2f);
+            advance();
+        }
+    }
+}
