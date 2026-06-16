@@ -3,6 +3,13 @@
 Parameters are the contract between DSP and UI **and** the thing presets save. Get
 the list right before building the UI.
 
+## The 50-parameter limit — [verified-official]
+
+Amorph exposes **up to 50 dynamic parameters** (each with a name, range, and unit) as
+automatable DAW parameters. Design within that budget — if a plugin needs more
+controls than 50, fold related ones into a single parameter (e.g. a mode selector) or
+split the plugin. The kit's linter warns when a DSP declares more than 50.
+
 ## Naming and the contract
 
 - Name parameters `param1..paramN`, **sequentially**. The number — not the label —

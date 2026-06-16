@@ -91,10 +91,18 @@ def check_main_loop(code: str) -> list[tuple]:
     return out
 
 
+PARAM_LIMIT = 50   # Amorph exposes up to 50 dynamic parameters (product guide)
+
+
 def check_param_handlers(text: str) -> list[tuple]:
-    """Each declared `input event` parameter should have an `event <id>` handler."""
+    """Each declared `input event` parameter should have an `event <id>` handler,
+    and the total must stay within Amorph's parameter limit."""
     out = []
     info = parse_cmajor(text)
+    if len(info["params"]) > PARAM_LIMIT:
+        out.append(("error", 0, "param-limit",
+                    f"{len(info['params'])} parameters declared — Amorph exposes at most "
+                    f"{PARAM_LIMIT}."))
     for p in info["params"]:
         if p["kind"] != "event":
             continue  # value endpoints are read directly, no handler required

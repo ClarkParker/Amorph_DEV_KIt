@@ -51,6 +51,7 @@ docs/
   10_PLUGIN_TYPES.md       The three Amorph plugin types and their I/O endpoint structure.
   11_DSP_COOKBOOK.md       Verified DSP building blocks (filters, dynamics, clip, LFO, …).
   12_TESTING.md            Unit-testing DSP with `cmaj test` + debugging patterns.
+  13_AMORPH_IDE.md         The Amorph IDE: modes, the 50-param limit, settings, MCP/CLI bridge.
 cookbook/Cookbook.cmajor   The canonical, unit-tested cookbook library (copy what you need).
 tests/Cookbook.cmajtest    Unit tests for the cookbook (all passing, run in CI).
 ai/

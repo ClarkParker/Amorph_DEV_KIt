@@ -125,6 +125,17 @@ for Cmajor-in-Amorph correctness. Facts established there (**[verified-official]
   ~30 Hz (`0.033 s`) via `output event`. In the Amorph host, `addEndpointListener`
   receives these directly — the prompts' "PluginProcessor.cpp must handle it" note
   applies only to a standalone JUCE export.
+- **50-parameter limit:** Amorph exposes "up to 50 dynamic parameters with names,
+  ranges, and units" as automatable DAW parameters. The linter enforces it
+  (`tools/cmajor_lint.py`, `param-limit`).
+- **MIDI variant carries silent audio:** the product guide describes Amorph MIDI as
+  "MIDI out + silent audio" — confirming a MIDI plugin always has an audio output
+  (silent by default), reconciling [tested by maintainer] contradiction #4.
+- **External-agent bridge:** Amorph runs a local HTTP JSON-RPC server (ports
+  7331–7399) and is MCP-compatible; `scripts/amorph_cli.py` exposes tools like
+  `read_code` / `get_error` / `status`. Documented in `docs/13_AMORPH_IDE.md`.
+- **Codegen settings** (for Amorph's own AI): temperature default 0.20, max tokens
+  4096 (8192+/16384+ for big jobs), agent turns default 20.
 - **UI host bridges:** `window.__amorphProcessMidi` (in) /
   `window.__amorphProcessMidiOut` (out, MIDI Instrument only), batched ~60 Hz;
   `sendMIDIInputEvent("midiIn", (status<<16)|(d1<<8)|d2)` (note `sendMIDI` does not
@@ -235,6 +246,7 @@ From `docs/Cmaj Language Guide.md` unless noted. **[verified]**
 
 | Source document | Status | Notes |
 |---|---|---|
+| Amorph product guide ("Copy Agent Instructions") | **authoritative (host)** | IDE/workflow/limits. Captured verbatim in `reference/amorph/PRODUCT_GUIDE.md`; distilled in `docs/13_AMORPH_IDE.md`. Source of the 50-parameter limit and the MCP/CLI bridge. |
 | Official Amorph IDE prompts (per variant) | **authoritative (host)** | Ground truth for Cmajor-in-Amorph. Captured verbatim in `ai/amorph_official/`. A few host-capability lines are outdated (see contradiction #4). |
 | Official `cmajor-lang/cmajor` repo (docs + `cmaj_api`) | **authoritative (language)** | Ground truth for language + bridge. |
 | `cmajor-amorph-framework` notes | current, mostly correct | Right bridge contract; right oversampling. Folded in. |

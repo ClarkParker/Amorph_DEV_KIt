@@ -20,9 +20,14 @@ Amorph offers three plugin categories. In the IDE's DSP browser they appear as
 - **Audio FX** processes incoming audio. It also has a sidechain bus and **MIDI in**
   (input only — no MIDI out).
 - **Audio Instrument** generates audio from MIDI (a synth). No main audio input.
-- **MIDI Instrument** generates/transforms MIDI (arpeggiator, sequencer, chord tool…)
-  and can **also** produce audio output.
+- **MIDI Instrument** generates/transforms MIDI (arpeggiator, sequencer, chord tool…).
+  Amorph's product guide describes it as "MIDI out **+ silent audio**" — i.e. it
+  always carries an audio output (silent by default), which is why an audio stream on
+  a MIDI plugin is valid.
 - All three have a **sidechain input**.
+
+> All variants share the **50-parameter limit** (see
+> [`13_AMORPH_IDE.md`](13_AMORPH_IDE.md) and [`04_PARAMETERS.md`](04_PARAMETERS.md)).
 
 ### Where the default prompt templates are narrower
 
