@@ -125,9 +125,11 @@ for Cmajor-in-Amorph correctness. Facts established there (**[verified-official]
   ~30 Hz (`0.033 s`) via `output event`. In the Amorph host, `addEndpointListener`
   receives these directly — the prompts' "PluginProcessor.cpp must handle it" note
   applies only to a standalone JUCE export.
-- **50-parameter limit:** Amorph exposes "up to 50 dynamic parameters with names,
-  ranges, and units" as automatable DAW parameters. The linter enforces it
-  (`tools/cmajor_lint.py`, `param-limit`).
+- **Parameter count:** the product guide documents "up to 50 dynamic parameters",
+  but this is a *safe/supported* number, **not a hard cap** — a shipped plugin runs
+  **80+ params** successfully (**[field-tested]**; its `[[main]]` graph declares up to
+  `param86`). The linter therefore *warns* (not errors) above 50
+  (`tools/cmajor_lint.py`, `param-count`). 50 = guaranteed-safe budget.
 - **MIDI variant carries silent audio:** the product guide describes Amorph MIDI as
   "MIDI out + silent audio" — confirming a MIDI plugin always has an audio output
   (silent by default), reconciling [tested by maintainer] contradiction #4.

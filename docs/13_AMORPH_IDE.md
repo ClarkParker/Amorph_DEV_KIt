@@ -25,15 +25,16 @@ inputs the product guide doesn't mention) is in
 [`10_PLUGIN_TYPES.md`](10_PLUGIN_TYPES.md). Load the correct variant for your use
 case — you can't turn an FX into an instrument after the fact.
 
-## Hard limit: 50 parameters — [verified-official]
+## Parameter count: 50 documented, more works
 
-> *"Up to 50 dynamic parameters with names, ranges, and units."*
+> *"Up to 50 dynamic parameters with names, ranges, and units."* — product guide
 
-Parameters declared in the DSP become automatable DAW parameters, capped at **50**.
-Design within that budget; the kit's linter warns past it
-([`09_PITFALLS_CHECKLIST.md`](09_PITFALLS_CHECKLIST.md)). This is also why the
-parameter-number contract matters so much (see
-[`04_PARAMETERS.md`](04_PARAMETERS.md)) — 50 slots, never renumbered.
+Parameters declared in the DSP become automatable DAW parameters. 50 is the
+**documented, safe** number — but **not a hard cap**: a real shipped plugin runs
+**80+** parameters fine (**[field-tested]**). Stay under 50 for guaranteed support;
+go higher only if you've verified it in your build. The linter warns (not errors)
+above 50. The parameter-number contract still rules — see
+[`04_PARAMETERS.md`](04_PARAMETERS.md).
 
 ## The three modes
 

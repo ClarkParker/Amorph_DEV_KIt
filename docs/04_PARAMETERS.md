@@ -3,12 +3,18 @@
 Parameters are the contract between DSP and UI **and** the thing presets save. Get
 the list right before building the UI.
 
-## The 50-parameter limit — [verified-official]
+## The parameter count — 50 is the safe line
 
-Amorph exposes **up to 50 dynamic parameters** (each with a name, range, and unit) as
-automatable DAW parameters. Design within that budget — if a plugin needs more
-controls than 50, fold related ones into a single parameter (e.g. a mode selector) or
-split the plugin. The kit's linter warns when a DSP declares more than 50.
+Amorph's product guide documents **up to 50 dynamic parameters** (each with a name,
+range, and unit). In practice this is a *supported/safe* number, **not a hard cap** —
+a real shipped plugin runs **80+** parameters successfully (**[field-tested]**). So:
+
+- Treat **50 as the guaranteed-safe budget**; stay under it when you can.
+- Going higher works today, but is past the documented limit — verify it in your
+  Amorph build and don't rely on it for anything you ship to others.
+
+The kit's linter **warns** (not errors) above 50, with this nuance. Whatever the
+count, the **parameter-number contract** still rules: never renumber, never reuse.
 
 ## Naming and the contract
 
