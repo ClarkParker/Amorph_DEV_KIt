@@ -80,3 +80,25 @@ off-aspect window sizes. Both have concrete fixes in [`07_SCALING.md`](07_SCALIN
 
 The official Cmajor `getScaleFactorLimits()` view API is not reliably respected in
 Amorph; manual `zoom` scaling is the working path. Re-check per Amorph version.
+
+## Running a TTS / heavy engine "inside" the plugin (LALAFY Session 29 — verified + open)
+
+The Cmajor **DSP is real-time-pure** — it cannot run JS, WASM, neural inference, or an
+external engine. Anything like that must live in the **JS view** (Amorph WebView) or a
+Cmajor **patch worker** (`--worker=webview|quickjs`), and feed the DSP.
+
+- **Verified:** `cmaj generate --target=javascript` compiles a patch's DSP to a JS/WASM
+  class (so JS *could* host the DSP outside a plugin host — not applicable inside Amorph,
+  where Amorph is the host and the DSP is the audio engine).
+- **Verified (build quirk):** `cmaj render --input=*.mid` exited 1 in cmaj 1.0.3159 (CLI
+  limitation, reproduced on a baseline patch — not a patch bug). Verify MIDI in the host.
+- **Verified (sandbox network):** the dev container's egress allowlist **blocks
+  huggingface.co**; GitHub is allowed. Fetch model/WASM assets from GitHub mirrors.
+- **OPEN — verify before building** a "view generates audio → DSP plays it" design:
+  1. Does **WASM** run in Amorph's WebView (WKWebView/WebView2/webkit2gtk)? (Very likely;
+     embed the .wasm in the single-file UI like other assets — Amorph has no web access.)
+  2. **View→DSP transfer of a multi-second audio buffer** (~1 MB of floats): the view API
+     in `03_UI_WEBCOMPONENT.md` is `pc.sendEventOrValue` (params/small events). For a big
+     buffer you need a Cmajor `external`/array endpoint the view can write — confirm Amorph
+     supports writing it at runtime. If not: render the audio offline and feed the plugin's
+     **audio input** (vocoder/Reuse path) instead.
