@@ -80,3 +80,28 @@ off-aspect window sizes. Both have concrete fixes in [`07_SCALING.md`](07_SCALIN
 
 The official Cmajor `getScaleFactorLimits()` view API is not reliably respected in
 Amorph; manual `zoom` scaling is the working path. Re-check per Amorph version.
+
+## Host transport — `std::timeline` (tempo / position / playback)  [field-tested]
+
+Amorph forwards the host transport to **typed `std::timeline` input event endpoints**,
+auto-routed by type (like MIDI — no name annotation). Field-tested names (cmaj 1.0.3159
+standard library):
+
+```cmajor
+input event std::timeline::Tempo         tempoIn;       // .bpm
+input event std::timeline::Position       positionIn;    // .frameIndex · .quarterNote · .barStartQuarterNote
+input event std::timeline::TransportState transportIn;   // .isPlaying() .isStopped() .isRecording() .isLooping()
+input event std::timeline::TimeSignature  timeSigIn;     // .numerator · .denominator
+
+event transportIn (std::timeline::TransportState e) { playing = e.isPlaying(); }  // extract the bool in the handler
+```
+
+- `Position.quarterNote` updates only when the host sends a position event (per block, not
+  per sample) → **interpolate** between events (`bpm/60` quarter-notes per second) if you
+  need sample-accurate beat crossings.
+- `TransportState` "doesn't work as a value" — handle it as an event (or cache via
+  `EventToValue`) and read the bool. To drive the UI in tempo, emit an **output event** and
+  read it in JS via `addEndpointListener`.
+- **Not reproducible in `cmaj render`** (no transport there) → transport behaviour is
+  **compile- + host-verified**, exactly like MIDI. Build it, confirm it compiles, then verify
+  in Amorph.

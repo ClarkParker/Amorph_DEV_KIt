@@ -100,3 +100,15 @@ bash tools/hooks/install.sh                      # make it automatic per commit
 The release `cmaj` binary wants WebKitGTK/JACK for GUI/audio features it never uses
 during `generate`/`test`. The stub recipe lives in [`../STATUS.md`](../STATUS.md)
 §"Reproducing the compile check" and is what the kit's CI workflow uses.
+
+## `cmaj render` quirks (auralising a patch headlessly)  [field-tested]
+
+To actually render audio (not just compile), `cmaj render --length=N --rate=R --output=out.wav`
+works headless once the WebKit/JACK stubs above are in place. Two gotchas:
+
+- It renders a `.cmajorpatch`, not a bare `.cmajor`. To sweep parameter values, `sed` the
+  `init:` annotation on a temp copy and render that.
+- **Leading-silence latency:** the output WAV begins with **~20480 samples of silence** before
+  the patch's real output — constant even for a trivial constant-output patch, so it's a
+  render-tool latency, **not** a DSP bug. Analyse a **mid/late** window; for timed events,
+  file-time = process-time + (latency / rate) ≈ +0.43 s at 48 kHz.

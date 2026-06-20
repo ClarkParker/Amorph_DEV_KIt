@@ -55,7 +55,7 @@ processor MyFX
     input  stream float<2> scIn;                     // sidechain bus (optional)
     input  event  std::midi::Message midiIn;         // MIDI in (optional; in only)
     output stream float<2> out;                      // audio out
-    // optional host transport: input event float64 transportIn;
+    // optional host transport: input event std::timeline::Tempo/Position/TransportState (see 05_AMORPH_NOTES)
     // ... param1..paramN, meter output events ...
 }
 ```
