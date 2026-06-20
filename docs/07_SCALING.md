@@ -1,5 +1,7 @@
 # 07 · UI Scaling (CSS `zoom`) and Host-Wrapper Fixes
 
+ ## Update at bottom: Amorph-specific gotchas (field-tested — LALAFY, 2026-06)
+
 **Status: [field-tested]** — distilled from a real refactor of a production Cmajor
 plugin UI. Not part of the official Cmajor spec; this is host-behaviour knowledge.
 
@@ -181,3 +183,48 @@ themes — tune it if needed.
 6. Text sharp at default size.
 7. Off-aspect window (e.g. 1300×950): no visible box around the chassis, no
    scrollbars.
+
+   ________________________________________________
+
+   Update:
+   ## Amorph-specific gotchas (field-tested — LALAFY, 2026-06)
+
+The fixed-chassis + CSS `zoom` recipe needs two extra fixes in Amorph. Both are only
+findable with a live on-screen readout of `iw/de/host/par/eff/z` (see "Diagnostic").
+
+### 1. Amorph ignores width:100% / height:100vh on the plugin's custom element
+The host element can stay frozen at a fixed intrinsic size (e.g. 864×468) at *every*
+window size, while `window.innerWidth/Height`, `documentElement` and the immediate
+wrapper (`this.parentElement`) all track the real window correctly.
+→ **Size the host in JS** from `window.innerWidth/innerHeight` (inline styles — they beat
+the stylesheet rule / any attribute Amorph sets).
+
+### 2. Amorph renders the plugin root at a constant scale (~0.9 at host-zoom 100%)
+After JS-sizing the host to `innerWidth`, `getBoundingClientRect()` returns a *constant
+fraction* (~0.90) of the px you assigned, while the wrapper stays = `innerWidth` → a ~10%
+frame; host-zoom 110% (≈1/0.9) "fixes" it. Amorph applies a transform to your element you
+can't see in your own CSS. → **Measure it, don't hard-code it.** Probe + compensate:
+
+```javascript
+_doScale() {
+  const w = innerWidth, h = innerHeight, hs = this.style;
+  hs.display='flex'; hs.alignItems='center'; hs.justifyContent='center';
+  hs.overflow='hidden'; hs.boxSizing='border-box';
+  hs.width = w+'px'; hs.height = h+'px';                 // probe
+  let eff = this.getBoundingClientRect().width / w;      // ~0.90 at host-zoom 100%
+  if (!isFinite(eff) || eff < 0.3 || eff > 3) eff = 1;
+  hs.width = (w/eff)+'px'; hs.height = (h/eff)+'px';     // compensate host
+  let z = Math.min(w/CHASSIS_W, h/CHASSIS_H) / eff;      // and chassis zoom
+  z = Math.round(Math.max(0.4, Math.min(2.5, z))*20)/20;
+  chassis.style.zoom = z;
+}
+```
+Measuring `eff` live (not hard-coding 0.9) makes it fill at *any* host-zoom. Drive it on
+`window.resize` **+ a ~250 ms timer** (re-measures `eff` if host-zoom changes without a
+resize event). ResizeObserver must watch the **wrapper / `<html>`, not `this`** — you
+mutate `this`'s size, so observing it feeds back into a loop.
+
+### Diagnostic (the thing that actually solved it)
+A live, **center-pinned**, multi-line readout (`iw / de / host / par / eff / z`) on a
+timer (not just `resize`). Center it: a bottom/right-pinned readout lands in exactly the
+clipped corner and is invisible — which is itself a clue that the bottom is clipped.
